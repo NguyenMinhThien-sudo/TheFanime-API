@@ -3,11 +3,14 @@ const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+//Paypal
+//Paypal
 const authRoute = require("./routes/auth");
 const userRoute = require("./routes/users");
 const movieRoute = require("./routes/movies");
 const listRoute = require("./routes/lists");
 const commentRoute = require("./routes/comments");
+const paypalRoute = require("./routes/paypal");
 
 dotenv.config();
 
@@ -18,6 +21,10 @@ app.use(
     credentials: true,
   })
 );
+
+// PAYPAL
+
+// PAYPAL
 
 main()
   .then(() => console.log("DB Connection Successfull!"))
@@ -33,6 +40,7 @@ app.use("/api/users", userRoute);
 app.use("/api/movies", movieRoute);
 app.use("/api/lists", listRoute);
 app.use("/api/comments", commentRoute);
+app.use("/api/paypal", paypalRoute);
 
 app.listen(8800, () => {
   console.log("Backend server is running!");

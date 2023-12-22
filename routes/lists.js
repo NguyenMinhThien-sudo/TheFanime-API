@@ -69,9 +69,9 @@ router.post("/", verify, async (req, res) => {
     const newList = new List(req.body);
     try {
       const savedList = await newList.save();
-      return res.status(201).json(savedList); // Sử dụng return ở đây
+      return res.status(201).json(savedList);
     } catch (err) {
-      return res.status(500).json(err); // Sử dụng return ở đây
+      return res.status(500).json(err);
     }
   } else {
     return res.status(403).json("You are not allowed!");

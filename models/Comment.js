@@ -14,7 +14,12 @@ const CommentSchema = new mongoose.Schema(
     },
     content: { type: String, required: true },
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Comment" },
-    // replies: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
+    // replies: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "Comment",
+    //   },
+    // ],
   },
   { timestamps: true }
 );

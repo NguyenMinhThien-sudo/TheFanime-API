@@ -30,6 +30,16 @@ router.get("/:movieId", async (req, res) => {
   }
 });
 
+//HIỂN THỊ BÌNH LUẬN TRẢ LỜI
+// router.get("/find/:id", verify, async (req, res) => {
+//   try {
+//     const comment = await Comment.findById(req.params.id);
+//     return res.status(200).json(comment);
+//   } catch (err) {
+//     return res.status(500).json(err);
+//   }
+// });
+
 // SỬA
 router.put("/:commentId", async (req, res) => {
   const { commentId } = req.params;

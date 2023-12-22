@@ -7,6 +7,14 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     profilePic: { type: String, default: "" },
     isAdmin: { type: Boolean, default: false },
+    vip: { type: Boolean, default: false },
+    vipExpiration: { type: Date, default: null },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Movie", // Tham chiếu đến mô hình của đối tượng phim
+      },
+    ],
   },
   { timestamps: true }
 );

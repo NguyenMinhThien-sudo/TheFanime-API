@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const User = require("../models/User");
+const Movie = require("../models/Movie");
 const CryptoJS = require("crypto-js");
 const verify = require("../verifyToken");
 const nodemailer = require("nodemailer");
@@ -99,7 +100,7 @@ router.get("/", verify, async (req, res) => {
 // GET USER STATS
 router.get("/stats", async (req, res) => {
   const today = new Date();
-  const latYear = today.setFullYear(today.setFullYear() - 1);
+  const lastYear = today.setFullYear(today.setFullYear() - 1);
 
   try {
     const data = await User.aggregate([
@@ -113,6 +114,57 @@ router.get("/stats", async (req, res) => {
           _id: "$month",
           total: { $sum: 1 },
         },
+      },
+    ]);
+    return res.status(200).json(data); // Sử dụng return ở đây
+  } catch (err) {
+    return res.status(500).json(err); // Sử dụng return ở đây
+  }
+});
+
+// USER TRANSACIONS STATS
+router.get("/transactions-stats", async (req, res) => {
+  const today = new Date();
+  const lastYear = today.setFullYear(today.setFullYear() - 1);
+
+  try {
+    const data = await User.aggregate([
+      {
+        $match: {
+          vip: true,
+          vipExpiration: { $gte: new Date(lastYear) },
+        },
+      },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d", // Định dạng chuỗi mong muốn (năm-tháng-ngày)
+              date: {
+                $subtract: ["$vipExpiration", 30 * 24 * 60 * 60 * 1000], // Trừ đi 30 ngày
+              },
+            },
+          },
+          username: "$username",
+          vip: "$vip",
+          profilePic: "$profilePic",
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          total: { $sum: 1 },
+          users: {
+            $push: {
+              username: "$username",
+              vip: "$vip",
+              profilePic: "$profilePic",
+            },
+          },
+        },
+      },
+      {
+        $sort: { _id: -1 }, // Sắp xếp từ gần nhất đến xa nhất
       },
     ]);
     return res.status(200).json(data); // Sử dụng return ở đây
@@ -182,6 +234,122 @@ router.post("/reset-password", async (req, res) => {
   } catch (error) {
     console.error("Đã xảy ra lỗi khi đặt lại mật khẩu:", error);
     return res.status(500).json("Đã xảy ra lỗi khi xử lý yêu cầu.");
+  }
+});
+
+// Cập nhật VIP
+router.post("/updateVip/:id", async (req, res) => {
+  const { userId, vipStatus } = req.body;
+
+  try {
+    // Tìm người dùng theo userId
+    const user = await User.findById(userId);
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 30);
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    // Cập nhật trạng thái VIP
+    user.vip = vipStatus;
+    user.vipExpiration = expirationDate;
+
+    // Lưu người dùng đã cập nhật
+    await user.save();
+
+    // console.log(
+    //   `Trạng thái VIP của người dùng ${userId} đã được cập nhật thành: ${vipStatus}`
+    // );
+    return res
+      .status(200)
+      .json({ message: "Cập nhật trạng thái VIP của người dùng thành công" });
+  } catch (error) {
+    console.error(
+      "Lỗi khi cập nhật trạng thái VIP của người dùng:",
+      error.message
+    );
+    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+  }
+});
+
+// ADD FAVORITE
+router.post("/favorites-add", async (req, res) => {
+  const userId = req.body.userId; // Lấy id của người dùng từ token
+  const movieId = req.body.movieId; // Lấy id của phim từ request body
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Kiểm tra xem phim đã có trong danh sách yêu thích của người dùng chưa
+    const isMovieInFavorites = user.favorites.includes(movieId);
+
+    if (isMovieInFavorites) {
+      return res.status(400).json({ error: "Movie already in favorites" });
+    }
+
+    // Thêm phim vào danh sách yêu thích của người dùng
+    user.favorites.push(movieId);
+    await user.save();
+
+    return res.status(200).json(user);
+  } catch (err) {
+    return res.status(500).json({ error: "Unable to add to favorites" });
+  }
+});
+
+// GET FAVORITE
+router.get("/favorites/:id", async (req, res) => {
+  try {
+    const userId = req.params.id; // Lấy id của người dùng từ token
+
+    // Tìm người dùng trong cơ sở dữ liệu
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const favoriteMovies = await Movie.find({ _id: { $in: user.favorites } });
+
+    // Trả về danh sách yêu thích của người dùng với thông tin chi tiết của từng phim
+    res.status(200).json(favoriteMovies);
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// REMOVE FAVORITE
+router.post("/favorites-remove", async (req, res) => {
+  const userId = req.body.userId; // Lấy id của người dùng từ token
+  const movieId = req.body.movieId; // Lấy id của phim từ request body
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Kiểm tra xem phim có trong danh sách yêu thích của người dùng không
+    const isMovieInFavorites = user.favorites.includes(movieId);
+
+    if (!isMovieInFavorites) {
+      return res.status(404).json({ error: "Movie not found in favorites" });
+    }
+
+    // Loại bỏ phim khỏi danh sách yêu thích của người dùng
+    user.favorites.pull(movieId);
+    await user.save();
+
+    return res.status(200).json(user);
+  } catch (err) {
+    return res.status(500).json({ error: "Unable to remove from favorites" });
   }
 });
 
